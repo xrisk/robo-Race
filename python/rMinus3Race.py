@@ -12,8 +12,9 @@ from std_msgs.msg import String
 import dynamixel
 
 #--------------------------------------------------------------OFFSETS------------------------------------------------------------------------------
-darwin = {1: 90, 2: -90, 3: 67.5, 4: -67.5, 7: 45, 8: -45, 9: 'i', 10: 'i', 13: 'i', 14: 'i', 17: 'i', 18: 'i'}
-abmath = {11: 15, 12: -15, 13: -10, 14: 10, 15: -5, 16: 5}
+darwin = {1: 90, 2: -90, 3: 67.5, 4: -67.5, 7: 45, 8: -10, 9: 'i', 10: 'i', 13: 'i', 14: 'i', 17: 'i', 18: 'i'}
+#abmath = {11: 5, 12: -5, 13: -10, 14: 10, 15: -5, 16: 5}
+abmath = {11: 5, 12: -5}
 hand = {5: 60, 6: -60}
 #---------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -35,7 +36,7 @@ class Dynamixel(object) :
 		if len(self.ids)<lock :
 			raise RuntimeError("all the motors were not detected")
 
-		dxl.set_moving_speed(dict(zip(self.ids,itertools.repeat(100))))
+		dxl.set_moving_speed(dict(zip(self.ids,itertools.repeat(1000))))
 
 
 	def posWrite(self,pose) :
@@ -200,16 +201,19 @@ back_right = Motionset(json.parse(motion="18 B_L_E"),speed=1,offset=[darwin])
 #back_walk = Custom(json.setparse(motion="11 B_L_S",offset=[darwin]))
 walk_init = Custom(motionset=[w1,w2])
 walk_motion = Custom(motionset=[w3,w4,w5,w6])				
-fast_left = Motionset(json.parse(motion="9 ff_r_l"),speed=1.5,offset=[darwin])
-fast_right = Motionset(json.parse(motion="10 ff_l_r"),speed=1.5,offset=[darwin])
+fast_left = Motionset(json.parse(motion="9 ff_r_l"),speed=1.5,offset=[darwin,abmath])
+fast_right = Motionset(json.parse(motion="10 ff_l_r"),speed=1.5,offset=[darwin,abmath])
 fast_walk = Custom(motionset=[fast_left,fast_right])
 r_turn = Motionset(json.parse(motion="27 RT"),speed=1.2,offset=[darwin])
 l_turn = Motionset(json.parse(motion="28 LT"),speed=1.2,offset=[darwin])
 #-----------------------------------------------------------------------------------------------------------------------------------------------------
 
+speed = 0.2
 '''def dpad(pos) :
 	if pos.top :
-		fast_walk.run()
+		if speed<1.5 :
+			fast_walk.run(speed)
+			speed = speed + 0.3
 	elif pos.bottom :
 		pass
 	elif pos.left :
@@ -217,15 +221,18 @@ l_turn = Motionset(json.parse(motion="28 LT"),speed=1.2,offset=[darwin])
 	elif pos.right :
 		r_turn.run()
 	elif pos.middle :
-		balance.run()'''
+		balance.run() '''
 						
 if __name__ == "__main__" :
 	Dxl = Dynamixel(lock=20)
 	balance.run()	
-	raw_input("Proceed?")	
-	walk_init.run()
+	raw_input("Proceed?")
 	while True :
-		fast_walk.run()
+		fast_walk.run(speed)
+		if speed<1.5 :
+			speed = speed + 0.3
+		
+			
 	'''bd = BlueDot()
 	bd.when_pressed = dpad
 	pause()'''
