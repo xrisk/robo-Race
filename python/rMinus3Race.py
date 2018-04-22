@@ -4,24 +4,27 @@ import time
 import itertools
 import numpy as np
 import json
+import math
 import xml.etree.ElementTree as ET
-#from signal import pause
-#from bluedot import BlueDot
+from signal import pause
+from bluedot import BlueDot
 import rospy
 from std_msgs.msg import String
 import dynamixel
-
+import os
 #--------------------------------------------------------------OFFSETS------------------------------------------------------------------------------
+# darwin = {1: 90, 2: -90, 3: 67.5, 4: -67.5, 7: 45, 8: -10, 9: 'i', 10: 'i', 13: 'i', 14: 'i', 17: 'i', 18: 'i'}
+
 darwin = {1: 90, 2: -90, 3: 67.5, 4: -67.5, 7: 45, 8: -10, 9: 'i', 10: 'i', 13: 'i', 14: 'i', 17: 'i', 18: 'i'}
+darwin_boom = {13: -12, 14: 10}
 #abmath = {11: 5, 12: -5, 13: -10, 14: 10, 15: -5, 16: 5}
-abmath = {11: 5, 12: -5}
+abmath = {11: 7, 12: -5}
 hand = {5: 60, 6: -60}
 #---------------------------------------------------------------------------------------------------------------------------------------------------
-
-path = "soccer.xml"
-
+path = "/home/ashaz/soccer/src/soccer/include/super.json"
+print os.getcwd()
 class Dynamixel(object) :
-	def __init__(self,lock,default_id=0) :
+	def __init__(self,lock,default_port=0) :
 		global dxl
 		ports = dynamixel.get_available_ports()
 		if not ports :
@@ -29,7 +32,7 @@ class Dynamixel(object) :
 
 		print "Connecting to ",ports[0]
 
-		dxl = dynamixel.Dxl(ports[default_id])
+		dxl = dynamixel.Dxl(ports[default_port])
 		self.ids = dxl.scan(25)
 		print self.ids
 		dxl.enable_torque(self.ids)
@@ -38,65 +41,68 @@ class Dynamixel(object) :
 
 		dxl.set_moving_speed(dict(zip(self.ids,itertools.repeat(1000))))
 
+	def __delete__(self) :
+		print "First Node dead"
+
 
 	def posWrite(self,pose) :
 		pos = {ids:angle for ids,angle in pose.items()}
-		self.dxl.set_goal_position(pos)
+		dxl.set_goal_position(pos)
 
 
 	def listWrite(self,list) :
 		pos = dict(zip(self.ids,list))
-		self.dxl.set_goal_position(pos)
+		dxl.set_goal_position(pos)
 
 
 	def angleWrite(self,ids,pose) :
-		self.dxl.set_goal_position({ids:pose})
+		dxl.set_goal_position({ids:pose})
 		
 	def returnPos(self,ids) :
 
-		return self.dxl.get_present_position((ids,))	
+		return dxl.get_present_position((ids,))	
 
 
 class JSON(object) :
 	def __init__(self,file) :
 		try :
-			tree = ET.parse(file)
-			self.root = tree.getroot()
+			with open(file,"r") as f :
+				self.data = json.load(f)
 		except :
 			raise RuntimeError("File not found")
 
-	def parse(self,motion) :
-		find = "PageRoot/Page[@name='" +motion+ "']/steps/step"
-		try :
-			steps = [x for x in self.root.findall(find)]
-		except :
-			raise RuntimeError("Motion not found")
 
+		
+	def parse(self,motion) :
 		p_frame = str()
 		p_pose = str()
 		write = []
-		for step in steps :
-			write.append(Motion(step.attrib['frame'],step.attrib['pose'],p_frame,p_pose))
-			p_frame = step.attrib['frame']
-			p_pose = step.attrib['pose']
-
+		js = self.data["Root"]["PageRoot"]["Page"]
+		for j in js :
+			try :
+				 if motion == j["name"] :
+					for step in j["steps"]["step"] :
+						write.append(Motion(step["frame"],step["pose"],p_frame,p_pose))
+						p_frame = step["frame"]
+						p_pose = step["pose"]
+			except :
+				raise RuntimeError("Motion not found")
 		return write
-	
+			
 	def setparse(self,motion,offset=[]) :
 		js = self.data["Root"]["FlowRoot"]["Flow"]
 		motionset = []
 		for j in js :
 			try : 
-				if motion in j["name"] :
+				if motion == j["name"] :
 					for unit in j["units"]["unit"] :
-						motionset.append(Motionset(json.parse(motion=unit["main"]),speed=float(unit["mainSpeed"])/2.0,offset=offset))
+						motionset.append(Motionset(json.parse(motion=unit["main"]),speed=float(unit["mainSpeed"]),offset=offset))
 			except :
 				raise RuntimeError("Motionset not found")
 
-		return motionset
+                return motionset 
 
-	
-	
+
 class Motion(object) :
 	def __init__(self,frame,pose,p_frame,p_pose) :
 		self.frame = int(frame)
@@ -141,10 +147,8 @@ class Motion(object) :
 			ids.append(key)	
 
 		for pose in zip(*write) :
-			print pose
 			dxl.set_goal_position(dict(zip(ids,pose)))
 			time.sleep(0.008/speed)
-
 
 
 class Motionset(object) :
@@ -154,9 +158,8 @@ class Motionset(object) :
 		self.speed = speed
 		self.init = False
 
+
 	def run(self,speed=1) :
-		speed = self.speed
-		
 		if self.init :
 			self.exe(speed)
 
@@ -164,14 +167,15 @@ class Motionset(object) :
 			self.init = True
 			for motion in self.motion :
 				for offset in self.offset :
-					#for m in motion :
 					motion.setoffset(offset)
 				motion.motion(speed)
 			
 	def exe(self,speed) :
+		
 		for motion in self.motion :
 			motion.motion(speed)	
-								
+		
+				
 
 class Custom(object) :
 	def __init__(self,motionset) :
@@ -186,54 +190,55 @@ class Custom(object) :
   
 			motionset.run(speed)
 
-		
 #--------------------------------------------------------------MOTIONS--------------------------------------------------------------------------------
 json = JSON(path)
-balance = Motionset(json.parse(motion="2 Balance"),offset=[darwin,hand])
+balance = Motionset(json.parse(motion="152 Balance"),offset=[darwin,hand])
 w1 = Motionset(json.parse(motion="32 F_S_L"),speed=2.1,offset=[darwin])
 w2 = Motionset(json.parse(motion="33 "),speed=2.1,offset=[darwin])
 w3 = Motionset(json.parse(motion="38 F_M_R"),speed=2.7,offset=[darwin])
 w4 = Motionset(json.parse(motion="39 "),speed=2.1,offset=[darwin])
 w5 = Motionset(json.parse(motion="36 F_M_L"),speed=2.7,offset=[darwin])
 w6 = Motionset(json.parse(motion="37 "),speed=2.1,offset=[darwin])
+
 back_left = Motionset(json.parse(motion="17 B_R_E"),speed=1,offset=[darwin])
 back_right = Motionset(json.parse(motion="18 B_L_E"),speed=1,offset=[darwin])
-#back_walk = Custom(json.setparse(motion="11 B_L_S",offset=[darwin]))
+back_walk = Custom(json.setparse(motion="11 B_L_S",offset=[darwin]))
 walk_init = Custom(motionset=[w1,w2])
 walk_motion = Custom(motionset=[w3,w4,w5,w6])				
-fast_left = Motionset(json.parse(motion="9 ff_r_l"),speed=1.5,offset=[darwin,abmath])
-fast_right = Motionset(json.parse(motion="10 ff_l_r"),speed=1.5,offset=[darwin,abmath])
+fast_left = Motionset(json.parse(motion="9 ff_r_l"),speed=1.5,offset=[darwin,abmath,darwin_boom])
+fast_right = Motionset(json.parse(motion="10 ff_l_r"),speed=1.5,offset=[darwin,abmath,darwin_boom])
 fast_walk = Custom(motionset=[fast_left,fast_right])
 r_turn = Motionset(json.parse(motion="27 RT"),speed=1.2,offset=[darwin])
 l_turn = Motionset(json.parse(motion="28 LT"),speed=1.2,offset=[darwin])
-#-----------------------------------------------------------------------------------------------------------------------------------------------------
 
-speed = 0.2
-'''def dpad(pos) :
-	if pos.top :
-		if speed<1.5 :
-			fast_walk.run(speed)
-			speed = speed + 0.3
-	elif pos.bottom :
-		pass
-	elif pos.left :
-		l_turn.run()
-	elif pos.right :
-		r_turn.run()
-	elif pos.middle :
-		balance.run() '''
-						
-if __name__ == "__main__" :
-	Dxl = Dynamixel(lock=20)
-	balance.run()	
-	raw_input("Proceed?")
-	while True :
-		fast_walk.run(speed)
-		if speed<1.5 :
-			speed = speed + 0.3
+left_side_step = Custom(json.setparse("21 Fst_L",offset=[darwin, hand]))
+right_side_step = Custom(json.setparse("20 Fst_R",offset=[darwin, hand]))
+
+l_step = Custom(json.setparse("24 F_E_L",offset=[darwin, hand]))
+r_step = Custom(json.setparse("25 F_E_R",offset=[darwin, hand]))
+
+kick = Custom(json.setparse("26 F_PShoot_R",offset = [darwin, hand]))
+rskick = Motionset(json.parse("39 Pass_R"),speed=1.5, offset=[darwin])
+#-----------------------------------------------------------------------------------------------------------------------------------------------------   
+
+speed = 0.7
 		
-			
-	'''bd = BlueDot()
-	bd.when_pressed = dpad
-	pause()'''
-	
+if __name__ == "__main__":
+	ddxl = Dynamixel(lock=20)
+
+	balance.run()
+	raw_input("Proceed?")
+	try :
+		while True :
+			if speed < 1.5 :
+				speed += (2.718*0.3)
+
+			fast_walk.run(spd=speed)
+
+	except KeyboardInterrupt :
+		fast_walk.run(spd=0.5)
+		time.sleep(0.1)
+		balance.run()
+
+
+	 	
