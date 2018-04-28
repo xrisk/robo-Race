@@ -231,7 +231,7 @@ if __name__ == "__main__":
 	try :
 		while True :
 			iter += 0.33
-			if speed < 1.5 :
+			if speed < 2.0 :
 				speed += (2.718*iter)
 
 			fast_walk.run(spd=speed)
