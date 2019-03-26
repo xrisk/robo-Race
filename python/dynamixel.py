@@ -38,14 +38,14 @@ class Dxl:
         self.DXL_MAXIMUM_POSITION_VALUE  = 4000                          # and this value (note that the Dynamixel would not move when the position value is out of movable range. Check e-manual about the range of the Dynamixel you use.)
         self.DXL_MOVING_STATUS_THRESHOLD = 10
         if(dynamixel.openPort(self.portHandler)):
-            print "Port open done"
+            print("Port open done")
         else:
             print("Failed to open port")
             quit()
         if(dynamixel.setBaudRate(self.portHandler, self.BAUDRATE)):
-            print "Change baudrate succeeded"
+            print("Change baudrate succeeded")
         else:
-            print "Cannot add baudrate"
+            print("Cannot add baudrate")
             quit()
 
     def scan(self, ran = 254):
@@ -68,28 +68,28 @@ class Dxl:
         dxl_comm_result= dynamixel.getLastTxRxResult(self.portHandler, self.PROTOCOL_VERSION)
         dxl_error = dynamixel.getLastRxPacketError(self.portHandler, self.PROTOCOL_VERSION)
         if(dxl_comm_result != COMM_SUCCESS):
-            print(dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result))
+            print((dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result)))
         elif(dxl_error != 0):
-            print(dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error))
+            print((dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error)))
     
     def _read(self, DXL_ID):
         dxl_present_position = dynamixel.read2ByteTxRx(self.portHandler, self.PROTOCOL_VERSION, DXL_ID, self.ADDR_MX_PRESENT_POSITION)
         dxl_comm_result = dynamixel.getLastTxRxResult(self.portHandler, self.PROTOCOL_VERSION)
         dxl_error = dynamixel.getLastRxPacketError(self.portHandler, self.PROTOCOL_VERSION)
         if(dxl_comm_result != COMM_SUCCESS):
-            print(dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result))
+            print((dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result)))
         elif(dxl_error != 0):
-            print(dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error))
+            print((dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error)))
         return (dxl_present_position - 2048) * 0.088
     def set_goal_position(self, ids):
         # for i, angle in ids.iteritems():
             # self._write(i,angle)
-        for i, angle in ids.iteritems():
+        for i, angle in ids.items():
             dxl_addparam_result = ctypes.c_ubyte(dynamixel.groupSyncWriteAddParam(self.groupSync, i, 2048 + int(angle / 0.088), self.LEN_MX_GOAL_POSITION)).value
         dynamixel.groupSyncWriteTxPacket(self.groupSync)
         dxl_comm_result = dynamixel.getLastTxRxResult(self.portHandler, self.PROTOCOL_VERSION)
         if(dxl_comm_result != COMM_SUCCESS):
-            print(dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result))
+            print((dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result)))
         dynamixel.groupSyncWriteClearParam(self.groupSync)
 
 
@@ -103,11 +103,11 @@ class Dxl:
         dxl_comm_result = dynamixel.getLastTxRxResult(self.portHandler, self.PROTOCOL_VERSION)
         dxl_error = dynamixel.getLastRxPacketError(self.portHandler, self.PROTOCOL_VERSION)
         if(dxl_comm_result != COMM_SUCCESS):
-            print(dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result))
+            print((dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result)))
         elif(dxl_error != 0):
-            print(dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error))
+            print((dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error)))
     def set_moving_speed(self, ids):
-        for i,val in ids.iteritems():
+        for i,val in ids.items():
             self._set_moving_speed(i,val)
 
     def _enable_torque(self, DXL_ID):
@@ -115,9 +115,9 @@ class Dxl:
         dxl_comm_result = dynamixel.getLastTxRxResult(self.portHandler, self.PROTOCOL_VERSION)
         dxl_error = dynamixel.getLastRxPacketError(self.portHandler, self.PROTOCOL_VERSION)
         if(dxl_comm_result != COMM_SUCCESS):
-            print(dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result))
+            print((dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result)))
         elif(dxl_error != 0):
-            print(dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error))
+            print((dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error)))
     
     def enable_torque(self, ids):
         for i in ids:
@@ -128,9 +128,9 @@ class Dxl:
         dxl_comm_result = dynamixel.getLastTxRxResult(self.portHandler, self.PROTOCOL_VERSION)
         dxl_error = dynamixel.getLastRxPacketError(self.portHandler, self.PROTOCOL_VERSION)
         if(dxl_comm_result != COMM_SUCCESS):
-            print(dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result))
+            print((dynamixel.getTxRxResult(self.PROTOCOL_VERSION, self.dxl_comm_result)))
         elif(dxl_error != 0):
-            print(dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error))
+            print((dynamixel.getRxPacketError(self.PROTOCOL_VERSION, dxl_error)))
     def disable_torque(self, ids):
         for i in ids:
             self._enable_torque(i)
