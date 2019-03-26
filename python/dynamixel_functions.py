@@ -21,10 +21,11 @@
 
 import ctypes
 from ctypes import cdll
+
 # dxl_lib = cdll.LoadLibrary("../../c/build/win32/output/dxl_x86_c.dll")  # for windows 32bit
 # dxl_lib = cdll.LoadLibrary("../../c/build/win64/output/dxl_x64_c.dll")  # for windows 64bit
 # dxl_lib = cdll.LoadLibrary("../../c/build/linux32/libdxl_x86_c.so")     # for linux 32bit
-dxl_lib = cdll.LoadLibrary("./libdxl_sbc_c.so")     # for linux 64bit
+dxl_lib = cdll.LoadLibrary("./libdxl_sbc_c.so")  # for linux 64bit
 # dxl_lib = cdll.LoadLibrary("../../c/build/linux_sbc/libdxl_sbc_c.so")   # for SBC linux
 # dxl_lib = cdll.LoadLibrary("../../c/build/mac/libdxl_mac_c.dylib")      # for Mac OS
 
@@ -138,7 +139,7 @@ groupBulkReadTxRxPacket = dxl_lib.groupBulkReadTxRxPacket
 groupBulkReadIsAvailable = dxl_lib.groupBulkReadIsAvailable
 groupBulkReadGetData = dxl_lib.groupBulkReadGetData
 
-#group_bulk_write
+# group_bulk_write
 groupBulkWrite = dxl_lib.groupBulkWrite
 
 groupBulkWriteAddParam = dxl_lib.groupBulkWriteAddParam
@@ -148,7 +149,7 @@ groupBulkWriteClearParam = dxl_lib.groupBulkWriteClearParam
 
 groupBulkWriteTxPacket = dxl_lib.groupBulkWriteTxPacket
 
-#group_sync_read
+# group_sync_read
 groupSyncRead = dxl_lib.groupSyncRead
 
 groupSyncReadAddParam = dxl_lib.groupSyncReadAddParam
@@ -162,7 +163,7 @@ groupSyncReadTxRxPacket = dxl_lib.groupSyncReadTxRxPacket
 groupSyncReadIsAvailable = dxl_lib.groupSyncReadIsAvailable
 groupSyncReadGetData = dxl_lib.groupSyncReadGetData
 
-#group_sync_write
+# group_sync_write
 groupSyncWrite = dxl_lib.groupSyncWrite
 
 groupSyncWriteAddParam = dxl_lib.groupSyncWriteAddParam
