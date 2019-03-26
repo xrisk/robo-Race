@@ -7,15 +7,37 @@ import json
 import math
 import xml.etree.ElementTree as ET
 from signal import pause
+import sys
 
 # from bluedot import BlueDot
-import rospy
-from std_msgs.msg import String
-import dynamixel
+# import rospy
+# from std_msgs.msg import String
+# import dynamixel
 import os
+import dxl2
+from dxl2 import Instruction, Motor
 
 # --------------------------------------------------------------OFFSETS------------------------------------------------------------------------------
 # darwin = {1: 90, 2: -90, 3: 67.5, 4: -67.5, 7: 45, 8: -10, 9: 'i', 10: 'i', 13: 'i', 14: 'i', 17: 'i', 18: 'i'}
+
+
+def map_value(x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max - out_min) // (in_max - in_min) + out_min
+
+
+def constrain(x, x_min, x_max):
+    if x < x_min:
+        return x_min
+    elif x > x_max:
+        return x_max
+    else:
+        return x
+
+
+def deg_to_raw(angle):
+    conv = int(round(map_value(angle, -150, +150, 0, 4096)))
+    return constrain(conv, 0, 4096)
+
 
 darwin = {
     1: 90,
@@ -39,42 +61,68 @@ hand = {5: 60, 6: -60}
 path = "./super.json"
 print(os.getcwd())
 
+conn = dxl2.Connection("/dev/tty.usbserial-A5052MJ8")
+conn.open_port()
+
+chain = dxl2.MotorChain(conn, [Motor(conn, i, dxl2.MotorType.MX) for i in range(1, 21)])
+
 
 class Dynamixel(object):
     def __init__(self, lock, default_port=0):
         global dxl
-        ports = dynamixel.get_available_ports()
-        if not ports:
-            raise IOError("No ports found ")
+        # ports = dynamixel.get_available_ports()
+        # if not ports:
+        #     raise IOError("No ports found ")
 
-        print("Connecting to ", ports[0])
+        # print("Connecting to ", ports[0])
 
-        dxl = dynamixel.Dxl(ports[default_port])
-        self.ids = dxl.scan(25)
-        print(self.ids)
-        dxl.enable_torque(self.ids)
+        # dxl = dynamixel.Dxl(ports[default_port])
+        # self.ids = dxl.scan(25)
+        # print(self.ids)
+        # dxl.enable_torque(self.ids)
+        self.ids = list(range(1, 21))
+        print("enable_torque: {}".format(self.ids))
+
+        chain.write_one_value(Instruction.TORQUE_ENABLE, 1)
+
         if len(self.ids) < lock - 1:
             raise RuntimeError("all the motors were not detected")
 
-        dxl.set_moving_speed(dict(list(zip(self.ids, itertools.repeat(1000)))))
+        print(
+            "set_moving_speed: {}".format(
+                dict(list(zip(self.ids, itertools.repeat(1000))))
+            )
+        )
+        # dxl.set_moving_speed(dict(list(zip(self.ids, itertools.repeat(1000)))))
+        chain.write_one_value(Instruction.MOVING_SPEED, 1000)
 
     def __delete__(self):
         print("First Node dead")
 
     def posWrite(self, pose):
-        pos = {ids: angle for ids, angle in list(pose.items())}
-        dxl.set_goal_position(pos)
+        pos = {ids: deg_to_raw(angle) for ids, angle in list(pose.items())}
+        print("set_goal_position: {}".format(pos))
+        chain.write_many_values(Instruction.GOAL_POSITION, pos)
 
     def listWrite(self, list):
         pos = dict(list(zip(self.ids, list)))
-        dxl.set_goal_position(pos)
+
+        # dxl.set_goal_position(pos)
+        pos = {eye: deg_to_raw(angle) for eye, angle in pos.items()}
+        print("set_goal_position: {}".format(pos))
+        chain.write_many_values(Instruction.GOAL_POSITION, pos)
 
     def angleWrite(self, ids, pose):
-        dxl.set_goal_position({ids: pose})
+        pose = deg_to_raw(pose)
+        print("set_goal_position: ", {ids: pose})
+        chain.write_one_value(Instruction.GOAL_POSITION, ids, pose)
+        # dxl.set_goal_position({ids: pose})
 
     def returnPos(self, ids):
-
-        return dxl.get_present_position((ids,))
+        print("get_present_position: {}".format(ids))
+        # chain.
+        raise NotImplementedError
+        # return dxl.get_present_position((ids,))
 
 
 class JSON(object):
@@ -164,7 +212,11 @@ class Motion(object):
             ids.append(key)
 
         for pose in zip(*write):
-            dxl.set_goal_position(dict(list(zip(ids, pose))))
+            # dxl.set_goal_position(dict(list(zip(ids, pose))))
+            values = dict(list(zip(ids, pose)))
+            values = {eye: deg_to_raw(angle) for eye, angle in values.items()}
+            print("set_goal_position: {}".format(values))
+            chain.write_many_values(Instruction.GOAL_POSITION, values)
             time.sleep(0.008 / speed)
 
 
@@ -244,18 +296,23 @@ rskick = Motionset(json.parse("39 Pass_R"), speed=1.5, offset=[darwin])
 speed = 0.7
 
 if __name__ == "__main__":
-    ddxl = Dynamixel(lock=20)
-    iter = 0.0
+
+    m = dxl2.Motor(conn, 1, dxl2.MotorType.MX)
+
+    print(m.write(Instruction.GOAL_POSITION, 2048))
+    print("here")
+
+    sys.exit(0)
+
+    iter_count = 0.0
     balance.run()
     input("Proceed?")
     try:
         while True:
-            iter += 0.33
+            iter_count += 0.33
             if speed < 1.5:
-                speed += 2.718 * iter
-
+                speed += 2.718 * iter_count
             fast_walk.run(spd=speed)
-
     except KeyboardInterrupt:
         walk_motion.run(spd=3.0)
         time.sleep(0.1)
